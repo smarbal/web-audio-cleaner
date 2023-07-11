@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %} Index {% endblock %}
+
+{% block content %}
+
+
+<p class="mb-6 mt-12 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 xl:px-48 dark:text-gray-400 text-center">
+  Clean your audio with our AI model !</p>
+
+  <div id="upload-container" class="flex-1">
+    <input type="file" 
+    class="filepond m-auto"
+    name="filepond"
+    multiple
+    credits="false"
+    allowReorder
+    data-max-file-size="300MB"
+    data-max-files="30" />
+  </div>
+
+  <div id="options">
+
+  </div>
+
+  <div id="submit-container" class="flex justify-center">
+    <button type="submit" id="submitButton"
+          class="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-pink-500 to-orange-400 group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-pink-200 dark:focus:ring-pink-800">
+          <span
+            class="relative px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
+            Enhance audio
+          </span>
+      </button>
+  </div>
+<!-- <script>
+    const fd = new FormData()
+    file = input.files[0]
+    fd.append('file', file)
+    fd.append('spellcheck', spellcheck);
+    fd.append('lang', lang);
+
+    fetch('/analyze', {
+      method: 'POST',
+      body: fd,
+      redirect: "follow"
+    }).then(response => {
+      if (response.redirected) {
+          window.location.href = response.url;
+      }
+    }
+    )
+</script> -->
+
+<script>
+  FilePond.registerPlugin(
+      FilePondPluginFileEncode,
+      FilePondPluginFileValidateSize,
+      FilePondPluginFilePoster,
+    );
+    // Select the file input and use create() to turn it into a pond
+    // const pond = document.querySelector('input')
+     
+    const pond = FilePond.create(
+      document.querySelector('input'), {
+                allowMultiple: true,
+                allowReorder: true,
+                allowFileEncode: true,
+                instantUpload: false,
+                allowProcess: false
+            }
+    );
+
+    
+    document.getElementById('submitButton').addEventListener('click', function() {
+      const files = pond.getFiles();
+      console
+      if (files.length > 0) {
+        const formData = new FormData();
+        
+        // Append each file to the FormData object
+        files.forEach(function(file) {
+          formData.append('file', file.file, file.filename);
+        });
+
+        // Send the FormData object to the server
+        fetch('/audio', {
+          method: 'POST',
+          body: formData
+        })
+          .then(response => {
+            if (response.ok) {
+              // File(s) uploaded successfully
+              console.log('Files uploaded successfully!');
+            } else {
+              // Error occurred during upload
+              console.error('Error uploading files.');
+            }
+          })
+          .catch(error => {
+            // Error occurred during upload
+            console.error('Error uploading files.', error);
+          });
+      }
+    });
+
+</script>
+
+{% endblock %}

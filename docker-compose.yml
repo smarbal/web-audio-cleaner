@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  web:
+    build: ./src
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes: ['./src:/app']
+    environment:
+      FLASK_DEBUG: 1 
