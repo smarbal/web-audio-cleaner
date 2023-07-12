@@ -21,8 +21,8 @@ app = Flask(__name__)
 CORS(app)
 app.secret_key = 'ThisIsaSecret_CRC_60II'
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['UPLOAD_FOLDER'] = 'audios/request'
-app.config['UPLOAD_FOLDER_RESULT'] = 'audios/clean'
+app.config['UPLOAD_FOLDER'] = 'static/audios/request'
+app.config['UPLOAD_FOLDER_RESULT'] = 'static/audios/clean'
 
     
 
@@ -39,6 +39,7 @@ def analyze():
         return 'Error' 
     # TODO: Add support for archives (.zip)  
     random_uuid  = uuid.uuid4() 
+    # Flash UUID ? so the user knows his request number if processing is long
     request_path = os.path.join(app.config['UPLOAD_FOLDER'], str(random_uuid))
     os.makedirs(request_path, mode=0o777, exist_ok=True)
     for file in files:
@@ -47,7 +48,9 @@ def analyze():
             audio_path = os.path.join(request_path, file.filename)
             file.save(audio_path) 
     clean_folder(request_path)
-    return 'Files uploaded successfully!' 
+    # Flash info about being done 
+    return redirect(url_for('result', uuid=random_uuid)) 
+
          
 
 @app.route("/history", methods=["GET"])
@@ -58,10 +61,6 @@ def history():
 
 @app.route("/result/<uuid>", methods=["GET"])
 def result(uuid): 
-    pdf = is_pdf(uuid)
-    page = request.args.get('page', default=0, type=(int)) 
-    with open('static/results.json', 'r') as f:
-        data = json.load(f)
     result = data[uuid]['result']
     result_image = data[uuid]['result_img']
     return render_template('result.html', result=result, result_image=result_image, pdf=pdf, page=page,document=document)
