@@ -9,6 +9,7 @@ from flask_cors import CORS
 from flask import Flask, request, Response, render_template, flash, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from speechbrain.pretrained import SpectralMaskEnhancement, WaveformEnhancement
+from pydub import AudioSegment
 
 enhance_model = SpectralMaskEnhancement.from_hparams(
     source="./speechbrain/pretrained_models/metricgan-plus-voicebank",
@@ -21,8 +22,7 @@ app = Flask(__name__)
 CORS(app)
 app.secret_key = 'ThisIsaSecret_CRC_60II'
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['UPLOAD_FOLDER'] = 'static/audios/request'
-app.config['UPLOAD_FOLDER_RESULT'] = 'static/audios/clean'
+app.config['UPLOAD_FOLDER'] = 'static/audios'
 
     
 
@@ -38,16 +38,31 @@ def analyze():
         flash("No files uploaded")  
         return 'Error' 
     # TODO: Add support for archives (.zip)  
-    random_uuid  = uuid.uuid4() 
-    # Flash UUID ? so the user knows his request number if processing is long
-    request_path = os.path.join(app.config['UPLOAD_FOLDER'], str(random_uuid))
-    os.makedirs(request_path, mode=0o777, exist_ok=True)
+    random_uuid  = str(uuid.uuid4()) 
+    # TODO: Flash UUID ? so the user knows his request number if processing is long
+    #Create necessary folders
+    request_path = os.path.join(app.config['UPLOAD_FOLDER'], random_uuid)
+    original_path = os.path.join(request_path, 'original')
+    os.makedirs(original_path, mode=0o777, exist_ok=True)
+    clean_dir_path = os.path.join(request_path, 'clean')
+    os.makedirs(clean_dir_path, mode=0o777, exist_ok=True)
+    # Save files in request folder
     for file in files:
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            audio_path = os.path.join(request_path, file.filename)
+            audio_path = os.path.join(original_path, file.filename)
             file.save(audio_path) 
-    clean_folder(request_path)
+    # Process audio
+    clean_folder(original_path, clean_dir_path)
+    # Format the cleaned data 
+    shutil.make_archive(os.path.join(request_path, random_uuid), 'zip', clean_dir_path)
+    combined = AudioSegment.empty()
+    for filename in os.listdir(clean_dir_path):
+        audio_path = os.path.join(clean_dir_path, filename)
+        sound = AudioSegment.from_file(audio_path, format="wav")
+        combined += sound
+    combined.export(os.path.join(request_path, 'FULL_' + random_uuid + '.wav'), format="wav")
+    save_metadata(request_path, random_uuid, len(files), combined.duration_seconds)
     # Flash info about being done 
     return redirect(url_for('result', uuid=random_uuid)) 
 
@@ -60,10 +75,10 @@ def history():
     return render_template('history.html', history=data)
 
 @app.route("/result/<uuid>", methods=["GET"])
-def result(uuid): 
-    result = data[uuid]['result']
-    result_image = data[uuid]['result_img']
-    return render_template('result.html', result=result, result_image=result_image, pdf=pdf, page=page,document=document)
+def result(uuid):
+    zip_path = os.path.join(app.config['UPLOAD_FOLDER'], uuid, uuid + '.zip')
+    full_audio_path = os.path.join(app.config['UPLOAD_FOLDER'], uuid, 'FULL_' + uuid + '.wav')
+    return render_template('result.html', uuid=uuid, zip_path=zip_path, full_audio_path=full_audio_path)
 
     
 def allowed_file(filename):
@@ -75,10 +90,7 @@ def clean_audio(audio):
     enhanced = enhance_model.enhance_batch(audio, lengths=torch.tensor([1.]))
     return enhanced
 
-def clean_folder(folder_path):
-    clean_dir_path = os.path.join(app.config['UPLOAD_FOLDER_RESULT'], folder_path.split('/')[-1])
-    os.makedirs(clean_dir_path, exist_ok=True)
-    os.chmod(clean_dir_path, 0o777)
+def clean_folder(folder_path, clean_dir_path):
     for filename in os.listdir(str(folder_path)):
         audio_path = os.path.join(str(folder_path), str(filename))
         noisy = enhance_model.load_audio(audio_path).unsqueeze(0)
@@ -88,7 +100,43 @@ def clean_folder(folder_path):
         torchaudio.save(clean_filepath, enhanced.cpu(), 16000)
         os.remove(filename) # When processing the file, the model/framework seems to create a copy in the root directory, so I delete it after processing
 
-        
+from datetime import datetime
+
+def parse_filename(filename):
+    parts = filename.split("_")
+    year = int(parts[0])
+    month = int(parts[1])
+    day = int(parts[2])
+    hour = int(parts[3])
+    minute = int(parts[4])
+    second = int(parts[5])
+    return datetime(year, month, day, hour, minute, second)
+
+def find_first_and_last_dates(directory):
+    filenames = os.listdir(directory)
+    if not filenames:
+        return None, None
+    
+    dates = [parse_filename(filename) for filename in filenames]
+    dates.sort()
+    
+    first_date = dates[0]
+    last_date = dates[-1]
+    
+    return first_date, last_date
+
+def save_metadata(request_path, uuid, n_files, duration):
+    new_data = { 'n_files' : n_files, 
+                       'duration' : duration
+                                        }
+
+    # Open the already existing data and update it with the new one             
+    with open("static/results.json", "r") as read_file:
+        data = json.load(read_file)
+        data[uuid] = new_data
+
+    with open("static/results.json", "w") as write_file:
+        json.dump(data, write_file) 
 
 if __name__ == '__main__':
     app.debug = True   # Change this when in production 

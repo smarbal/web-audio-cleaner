@@ -5,68 +5,28 @@
 
 
 {% block content %}
-{% if pdf %}
-<img id="img" src="../{{result_image[page]}}" alt="" class="max-w-[90%] mx-auto h-auto rounded-lg shadow-xl dark:shadow-gray-800 mt-10">
-{% else %}
-<img id="img" src="../{{result_image}}" alt="" class="max-w-[90%] mx-auto h-auto rounded-lg shadow-xl dark:shadow-gray-800 mt-10">
-{% endif %}
 
+<p class="mb-6 mt-12 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 xl:px-48 dark:text-gray-400 text-center">
+  Your request {{uuid}} has been processed !</p>
 
-{% if pdf %}
-<div class="flex justify-center align-center items-center ">
-    <div class="inline-flex rounded-md shadow-sm justify-center align-center items-center mx-auto mt-5">
-        <a href="/result/{{document}}?page=0" aria-current="page" class="px-4 py-2 text-sm font-medium text-blue-700 bg-white border border-gray-200 rounded-l-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-blue-500 dark:focus:text-white"> Page 1</a>
-        {% if result_image | length > 1 %}
-        {%for i in result_image[1:-1] %}
-        <a href="/result/{{document}}?page={{loop.index0 + 1}}" aria-current="page" class="px-4 py-2 text-sm font-medium text-blue-700 bg-white border-t border-b border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-blue-500 dark:focus:text-white">
-          Page {{loop.index0 + 2}}
-        </a>
-        {%endfor%}
-        <a href="/result/{{document}}?page={{result_image | length - 1 }}" class="px-4 py-2 text-sm font-medium text-blue-700 bg-white border border-gray-200 rounded-r-md hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-blue-500 dark:focus:text-white">
-            Page {{result_image | length }}
-          </a>
-        {% endif %}
+<div class="flex justify-center">
+  <a href="/{{zip_path}}" type="button" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center mr-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 m-3">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 13.5l3 3m0 0l3-3m-3 3v-6m1.06-4.19l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+    </svg>    
+      Download archive 
+  </a>
 
-     </div>
-
-</div>
-
-{% endif %}
-
-<div class="flex flex-row align-center justify-center w-200 mt-8">
-    <a id="json_button" class="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-pink-500 to-orange-400 group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-pink-200 dark:focus:ring-pink-800">
-        <span class="relative px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-            Download JSON
-        </span>
+    <a href="/{{full_audio_path}}" type="button" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 m-3">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
+      </svg>     
+      Download single audio file
     </a>
-      <a href="../{{result_image[page]}}" class="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-teal-300 to-lime-300 group-hover:from-teal-300 group-hover:to-lime-300 dark:text-white dark:hover:text-gray-900 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-lime-800" download="placeholder.png">
-        <span class="relative px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-            Download image 
-        </span>
-    </a>
-       
 </div>
 
-
-<div class="mx-auto max-w-prose">
-<blockquote class="p-4 my-4  bg-gray-50 border-l-4 border-gray-300 dark:border-gray-500 dark:bg-gray-800 mt-8">
-    {% if pdf %}
-    <p id="result_text" class="text-l font-medium leading-relaxed text-gray-900 dark:text-white">{{result[page][-1]}}</p>
-    {% else %}
-    <p id="result_text" class="text-l font-medium leading-relaxed text-gray-900 dark:text-white">{{result[-1]}}</p>
-    {% endif %}
-    <p id="result_text" class="text-l font-medium leading-relaxed text-gray-900 dark:text-white">{{result[page][-1]}}</p>
-</blockquote>
-</div>
 
 <script>
-
-        const blob = new Blob([JSON.stringify({{result | tojson }}, undefined,2)], { type: "text/json" }); // undefined,2 are used to pretty-print
-        const link = document.getElementById("json_button");
-    
-        link.download = 'result.json';
-        link.href = window.URL.createObjectURL(blob);
-        link.dataset.downloadurl = ["text/json", link.download, link.href].join(":");
       
 </script>
 {% endblock %}
