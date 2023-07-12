@@ -7,5 +7,7 @@ services:
     ports:
       - "3000:3000"
     volumes: ['./src:/app']
+    devices:
+      - "/dev/snd:/dev/snd"
     environment:
       FLASK_DEBUG: 1 

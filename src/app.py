@@ -3,6 +3,8 @@ import os
 import json
 import torch
 import torchaudio
+import uuid
+import shutil
 from flask_cors import CORS
 from flask import Flask, request, Response, render_template, flash, redirect, url_for, session
 from werkzeug.utils import secure_filename
@@ -12,16 +14,15 @@ enhance_model = SpectralMaskEnhancement.from_hparams(
     source="./speechbrain/pretrained_models/metricgan-plus-voicebank",
     savedir="./speechbrain/pretrained_models/metricgan-plus-voicebank"
 )
-UPLOAD_FOLDER = './static/audio'  
-UPLOAD_FOLDER_RESULT = './static/clean_audio'
+
 ALLOWED_EXTENSIONS = set(['mp3', 'wav', 'mp4', 'zip', 'rar'])
 
 app = Flask(__name__)
 CORS(app)
 app.secret_key = 'ThisIsaSecret_CRC_60II'
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['UPLOAD_FOLDER_RESULT'] = UPLOAD_FOLDER_RESULT
+app.config['UPLOAD_FOLDER'] = 'audios/request'
+app.config['UPLOAD_FOLDER_RESULT'] = 'audios/clean'
 
     
 
@@ -33,46 +34,21 @@ def index():
 @app.route("/audio", methods=["POST"])
 def analyze(): 
     files = request.files.getlist('files[]')
-
-    # if 'file' not in request.files: 
-    #     flash('No file part')
-    #     print("No files") 
-        # return redirect(url_for('index'))
-    print(files)
+    if files == [] :
+        flash("No files uploaded")  
+        return 'Error' 
+    # TODO: Add support for archives (.zip)  
+    random_uuid  = uuid.uuid4() 
+    request_path = os.path.join(app.config['UPLOAD_FOLDER'], str(random_uuid))
+    os.makedirs(request_path, mode=0o777, exist_ok=True)
     for file in files:
-        # Process each file as needed
-        file.save(f'audios/{file.filename[0:28]}')
-
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            audio_path = os.path.join(request_path, file.filename)
+            file.save(audio_path) 
+    clean_folder(request_path)
     return 'Files uploaded successfully!' 
-
-    # if user does not select file, browser also
-    # submit a empty part without filename
-    # if file.filename == '':
-    #     flash('No selected file')
-    #     # return redirect(request.url)
-    # if file and allowed_file(file.filename):
-    #     filename = secure_filename(file.filename)
-    #     img_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    #     file.save(img_path)
-    #     pages = 0
-        
-        # if filename.rsplit('.', 1)[1].lower() == 'pdf' : 
-        #     result, pages = analyze_paddle_pdf(img_path, lang)
-        #     format_result_pdf(result)
-
-        # else :
-        #     result = analyze_paddle(img_path, lang)
-        #     draw_box(filename, result)
-        #     format_result(result)
-
-        # if request.form['spellcheck'] == 'true' :  
-        #     spellcheck(result, lang) 
- 
-        # save_json(filename, result, pages)
-
-        # return redirect(url_for('result', document=filename)) 
-    return 'Error'
-
+         
 
 @app.route("/history", methods=["GET"])
 def history(): 
@@ -80,14 +56,14 @@ def history():
         data = json.load(f) 
     return render_template('history.html', history=data)
 
-@app.route("/result/<document>", methods=["GET"])
-def result(document): 
-    pdf = is_pdf(document)
+@app.route("/result/<uuid>", methods=["GET"])
+def result(uuid): 
+    pdf = is_pdf(uuid)
     page = request.args.get('page', default=0, type=(int)) 
     with open('static/results.json', 'r') as f:
         data = json.load(f)
-    result = data[document]['result']
-    result_image = data[document]['result_img']
+    result = data[uuid]['result']
+    result_image = data[uuid]['result_img']
     return render_template('result.html', result=result, result_image=result_image, pdf=pdf, page=page,document=document)
 
     
@@ -95,8 +71,28 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def clean_audio(audio):
+    # Add relative length tensor
+    enhanced = enhance_model.enhance_batch(audio, lengths=torch.tensor([1.]))
+    return enhanced
+
+def clean_folder(folder_path):
+    clean_dir_path = os.path.join(app.config['UPLOAD_FOLDER_RESULT'], folder_path.split('/')[-1])
+    os.makedirs(clean_dir_path, exist_ok=True)
+    os.chmod(clean_dir_path, 0o777)
+    for filename in os.listdir(str(folder_path)):
+        audio_path = os.path.join(str(folder_path), str(filename))
+        noisy = enhance_model.load_audio(audio_path).unsqueeze(0)
+        enhanced = clean_audio(noisy)
+        clean_filename = os.path.splitext(filename)[0] +'.wav' 
+        clean_filepath = os.path.join(clean_dir_path, clean_filename)   
+        torchaudio.save(clean_filepath, enhanced.cpu(), 16000)
+        os.remove(filename) # When processing the file, the model/framework seems to create a copy in the root directory, so I delete it after processing
+
+        
+
 if __name__ == '__main__':
-    app.debug = True   # Change this when in production
+    app.debug = True   # Change this when in production 
     app.run()
     
     

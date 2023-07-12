@@ -32,24 +32,6 @@
           </span>
       </button>
   </div>
-<!-- <script>
-    const fd = new FormData()
-    file = input.files[0]
-    fd.append('file', file)
-    fd.append('spellcheck', spellcheck);
-    fd.append('lang', lang);
-
-    fetch('/analyze', {
-      method: 'POST',
-      body: fd,
-      redirect: "follow"
-    }).then(response => {
-      if (response.redirected) {
-          window.location.href = response.url;
-      }
-    }
-    )
-</script> -->
 
 <script>
   FilePond.registerPlugin(
@@ -57,31 +39,26 @@
       FilePondPluginFileValidateSize,
       FilePondPluginFilePoster,
     );
-    // Select the file input and use create() to turn it into a pond
-    // const pond = document.querySelector('input')
-     
-    const pond = FilePond.create(
-      document.querySelector('input'), {
-                allowMultiple: true,
-                allowReorder: true,
-                allowFileEncode: true,
-                instantUpload: false,
-                allowProcess: false
-            }
-    );
+
+  const pond = FilePond.create(
+    document.querySelector('input'), {
+              allowMultiple: true,
+              allowReorder: true,
+              allowFileEncode: true,
+              instantUpload: false,
+              allowProcess: false
+          }
+  );
 
     
     document.getElementById('submitButton').addEventListener('click', function() {
       const files = pond.getFiles();
-      console
       if (files.length > 0) {
         const formData = new FormData();
-        
         // Append each file to the FormData object
         files.forEach(function(file) {
-          formData.append('file', file.file, file.filename);
+          formData.append('files[]', file.file, file.filename);
         });
-
         // Send the FormData object to the server
         fetch('/audio', {
           method: 'POST',
