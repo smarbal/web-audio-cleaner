@@ -6,10 +6,11 @@ COPY requirements.txt .
 COPY templates templates
 COPY static static
 COPY speechbrain speechbrain
-COPY audios audios
 COPY package-lock.json package.json tailwind.config.js ./
 COPY app.py .
 
+RUN apt update 
+RUN apt install ffmpeg -y
 RUN pip install --upgrade pip
 RUN pip3 install -r requirements.txt --no-cache-dir
 

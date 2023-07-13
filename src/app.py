@@ -10,6 +10,8 @@ from flask import Flask, request, Response, render_template, flash, redirect, ur
 from werkzeug.utils import secure_filename
 from speechbrain.pretrained import SpectralMaskEnhancement, WaveformEnhancement
 from pydub import AudioSegment
+from datetime import datetime
+import zipfile
 
 enhance_model = SpectralMaskEnhancement.from_hparams(
     source="./speechbrain/pretrained_models/metricgan-plus-voicebank",
@@ -24,8 +26,6 @@ app.secret_key = 'ThisIsaSecret_CRC_60II'
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['UPLOAD_FOLDER'] = 'static/audios'
 
-    
-
 
 @app.route("/")
 def index():
@@ -37,9 +37,8 @@ def analyze():
     if files == [] :
         flash("No files uploaded")  
         return 'Error' 
-    # TODO: Add support for archives (.zip)  
     random_uuid  = str(uuid.uuid4()) 
-    # TODO: Flash UUID ? so the user knows his request number if processing is long
+    flash(uuid)    
     #Create necessary folders
     request_path = os.path.join(app.config['UPLOAD_FOLDER'], random_uuid)
     original_path = os.path.join(request_path, 'original')
@@ -47,11 +46,15 @@ def analyze():
     clean_dir_path = os.path.join(request_path, 'clean')
     os.makedirs(clean_dir_path, mode=0o777, exist_ok=True)
     # Save files in request folder
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            audio_path = os.path.join(original_path, file.filename)
-            file.save(audio_path) 
+    if zipfile.is_zipfile(files[0]):
+        with zipfile.ZipFile(files[0], 'r') as zip_ref:
+            zip_ref.extractall(original_path)
+    else: 
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                audio_path = os.path.join(original_path, file.filename)
+                file.save(audio_path) 
     # Process audio
     clean_folder(original_path, clean_dir_path)
     # Format the cleaned data 
@@ -62,17 +65,16 @@ def analyze():
         sound = AudioSegment.from_file(audio_path, format="wav")
         combined += sound
     combined.export(os.path.join(request_path, 'FULL_' + random_uuid + '.wav'), format="wav")
-    save_metadata(request_path, random_uuid, len(files), combined.duration_seconds)
+    save_metadata(clean_dir_path, random_uuid, len(files), combined.duration_seconds)
     # Flash info about being done 
     return redirect(url_for('result', uuid=random_uuid)) 
-
-         
 
 @app.route("/history", methods=["GET"])
 def history(): 
     with open('static/results.json', 'r') as f:
         data = json.load(f) 
-    return render_template('history.html', history=data)
+    items = list(data.keys())[::-1] # To have the latest request first in the list
+    return render_template('history.html', history=data, items=items) 
 
 @app.route("/result/<uuid>", methods=["GET"])
 def result(uuid):
@@ -80,7 +82,16 @@ def result(uuid):
     full_audio_path = os.path.join(app.config['UPLOAD_FOLDER'], uuid, 'FULL_' + uuid + '.wav')
     return render_template('result.html', uuid=uuid, zip_path=zip_path, full_audio_path=full_audio_path)
 
-    
+@app.route("/delete", methods=["GET"])
+def delete():
+    for folder in os.listdir(app.config['UPLOAD_FOLDER']):
+        folder_path = os.path.join(app.config['UPLOAD_FOLDER'], folder)
+        if os.path.isdir(folder_path):
+            shutil.rmtree(folder_path) 
+    with open("static/results.json", "w") as write_file:
+        json.dump({}, write_file) 
+    return redirect(url_for('index')) 
+ 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -100,8 +111,6 @@ def clean_folder(folder_path, clean_dir_path):
         torchaudio.save(clean_filepath, enhanced.cpu(), 16000)
         os.remove(filename) # When processing the file, the model/framework seems to create a copy in the root directory, so I delete it after processing
 
-from datetime import datetime
-
 def parse_filename(filename):
     parts = filename.split("_")
     year = int(parts[0])
@@ -119,17 +128,17 @@ def find_first_and_last_dates(directory):
     
     dates = [parse_filename(filename) for filename in filenames]
     dates.sort()
-    
-    first_date = dates[0]
-    last_date = dates[-1]
-    
+    first_date = dates[0].strftime("%Y-%m-%d %H:%M:%S")
+    last_date = dates[-1].strftime("%Y-%m-%d %H:%M:%S")
     return first_date, last_date
 
-def save_metadata(request_path, uuid, n_files, duration):
+def save_metadata(clean_path, uuid, n_files, duration):
+    first_date, last_date = find_first_and_last_dates(clean_path)
     new_data = { 'n_files' : n_files, 
-                       'duration' : duration
-                                        }
-
+                       'duration' : duration,
+                       'first_date': first_date,
+                       'last_date': last_date
+                }
     # Open the already existing data and update it with the new one             
     with open("static/results.json", "r") as read_file:
         data = json.load(read_file)
