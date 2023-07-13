@@ -5,13 +5,13 @@ import torch
 import torchaudio
 import uuid
 import shutil
+import zipfile
 from flask_cors import CORS
 from flask import Flask, request, Response, render_template, flash, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from speechbrain.pretrained import SpectralMaskEnhancement, WaveformEnhancement
 from pydub import AudioSegment
 from datetime import datetime
-import zipfile
 
 enhance_model = SpectralMaskEnhancement.from_hparams(
     source="./speechbrain/pretrained_models/metricgan-plus-voicebank",
@@ -38,7 +38,6 @@ def analyze():
         flash("No files uploaded")  
         return 'Error' 
     random_uuid  = str(uuid.uuid4()) 
-    flash(uuid)    
     #Create necessary folders
     request_path = os.path.join(app.config['UPLOAD_FOLDER'], random_uuid)
     original_path = os.path.join(request_path, 'original')
@@ -46,15 +45,17 @@ def analyze():
     clean_dir_path = os.path.join(request_path, 'clean')
     os.makedirs(clean_dir_path, mode=0o777, exist_ok=True)
     # Save files in request folder
-    if zipfile.is_zipfile(files[0]):
-        with zipfile.ZipFile(files[0], 'r') as zip_ref:
-            zip_ref.extractall(original_path)
-    else: 
-        for file in files:
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                audio_path = os.path.join(original_path, file.filename)
-                file.save(audio_path) 
+    for file in files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            audio_path = os.path.join(original_path, file.filename)
+            file.save(audio_path) 
+    for filename in os.listdir(original_path):  # Zip check could be done simpler and earlier but the check messed up the audio files. 
+        file_path = os.path.join(original_path, filename)
+        if zipfile.is_zipfile(file_path):
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(original_path)
+            os.remove(file_path)
     # Process audio
     clean_folder(original_path, clean_dir_path)
     # Format the cleaned data 
@@ -65,7 +66,7 @@ def analyze():
         sound = AudioSegment.from_file(audio_path, format="wav")
         combined += sound
     combined.export(os.path.join(request_path, 'FULL_' + random_uuid + '.wav'), format="wav")
-    save_metadata(clean_dir_path, random_uuid, len(files), combined.duration_seconds)
+    save_metadata(clean_dir_path, random_uuid, len(os.listdir(clean_dir_path)), combined.duration_seconds)
     # Flash info about being done 
     return redirect(url_for('result', uuid=random_uuid)) 
 
