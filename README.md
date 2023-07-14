@@ -42,3 +42,6 @@ The names are used to see the start and end times of the processed files in the 
 If the full audio file isn't right, the zip archive will not suffer the consequences of bad parsing of the dates.  
 
 
+## Production 
+
+The appliction uses Gunicorn as WSGI production server. The used port is 5000. You can change the exposed port in the docker-compose.yml (first port is the port of the host -> 6000:5000 if you want to access the service on the port 6000). 

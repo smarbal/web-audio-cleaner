@@ -5,9 +5,10 @@ services:
     build: ./src
     restart: always
     ports:
-      - "3000:3000"
-    volumes: ['./src:/app']
+      - "5000:5000"
+    # volumes: ['./src:/app']  # only for developement
     devices:
       - "/dev/snd:/dev/snd"
     environment:
       FLASK_DEBUG: 0 
+      PASSWORD: ThisIsaSecret_CRC_60II

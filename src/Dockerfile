@@ -16,4 +16,5 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 
 ENV FLASK_APP=app.py
 
-CMD ["flask", "run", "--host=0.0.0.0", "--port=3000"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+

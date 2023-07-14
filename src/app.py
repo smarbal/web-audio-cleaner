@@ -22,7 +22,7 @@ ALLOWED_EXTENSIONS = set(['mp3', 'wav', 'mp4', 'aac', 'zip'])
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = 'ThisIsaSecret_CRC_60II'
+app.secret_key = os.environ['PASSWORD']
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['UPLOAD_FOLDER'] = 'static/audios'
 
@@ -158,7 +158,7 @@ def save_metadata(clean_path, uuid, n_files, duration):
         json.dump(data, write_file) 
 
 if __name__ == '__main__':
-    app.debug = False   # Change this when in production 
+    app.debug =  os.environ['PASSWORD'] | 0   # Change this when in production 
     app.run()
     
     
