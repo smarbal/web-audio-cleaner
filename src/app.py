@@ -133,11 +133,13 @@ def find_first_and_last_dates(directory):
     filenames = os.listdir(directory)
     if not filenames:
         return None, None
-    
-    dates = [parse_filename(filename) for filename in filenames]
-    dates.sort()
-    first_date = dates[0].strftime("%Y-%m-%d %H:%M:%S")
-    last_date = dates[-1].strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        dates = [parse_filename(filename) for filename in filenames]
+        dates.sort()
+        first_date = dates[0].strftime("%Y-%m-%d %H:%M:%S")
+        last_date = dates[-1].strftime("%Y-%m-%d %H:%M:%S")
+    except: 
+        return 'Unkown', 'Unkown'
     return first_date, last_date
 
 def save_metadata(clean_path, uuid, n_files, duration):
