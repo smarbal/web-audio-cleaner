@@ -37,7 +37,7 @@ From our testing, on our specific samples which the application was built for, [
 
 The results can be exported in zip archive, or in a single WAV file where all the audios have been joined together which fitted our need since we have a lot of small successive audios.
 
-The audios must ideally be formated like this : `year_month_day_hour_minute_second.wav`. 
+The audios must ideally be formated like this : `year_month_day_hour_minute_second_*_.wav`. Example: `2023_3_21_10_32_55_ch126.wav`
 The names are used to see the start and end times of the processed files in the history view. Also when the files are processed, `listdir` automatically orders them by ASCII code, so that buts them in the right order if the names are correctly formatted. 
 If the full audio file isn't right, the zip archive will not suffer the consequences of bad parsing of the dates.  
 
