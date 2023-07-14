@@ -7,7 +7,7 @@ import uuid
 import shutil
 import zipfile
 from flask_cors import CORS
-from flask import Flask, request, Response, render_template, flash, redirect, url_for, session
+from flask import Flask, request, Response, render_template, flash, redirect, url_for, session, get_flashed_messages, abort
 from werkzeug.utils import secure_filename
 from speechbrain.pretrained import SpectralMaskEnhancement, WaveformEnhancement
 from pydub import AudioSegment
@@ -18,7 +18,7 @@ enhance_model = SpectralMaskEnhancement.from_hparams(
     savedir="./speechbrain/pretrained_models/metricgan-plus-voicebank"
 )
 
-ALLOWED_EXTENSIONS = set(['mp3', 'wav', 'mp4', 'zip', 'rar'])
+ALLOWED_EXTENSIONS = set(['mp3', 'wav', 'mp4', 'aac', 'zip'])
 
 app = Flask(__name__)
 CORS(app)
@@ -35,9 +35,9 @@ def index():
 def analyze(): 
     files = request.files.getlist('files[]')
     if files == [] :
-        flash("No files uploaded")  
-        return 'Error' 
-    random_uuid  = str(uuid.uuid4()) 
+        flash("No files uploaded")
+        abort(400)
+    random_uuid  = str(uuid.uuid4())[:11] 
     #Create necessary folders
     request_path = os.path.join(app.config['UPLOAD_FOLDER'], random_uuid)
     original_path = os.path.join(request_path, 'original')
@@ -50,6 +50,9 @@ def analyze():
             filename = secure_filename(file.filename)
             audio_path = os.path.join(original_path, file.filename)
             file.save(audio_path) 
+        else: 
+            flash("Wrong file type.", 'error')
+            abort(400)
     for filename in os.listdir(original_path):  # Zip check could be done simpler and earlier but the check messed up the audio files. 
         file_path = os.path.join(original_path, filename)
         if zipfile.is_zipfile(file_path):
@@ -57,7 +60,11 @@ def analyze():
                 zip_ref.extractall(original_path)
             os.remove(file_path)
     # Process audio
-    clean_folder(original_path, clean_dir_path)
+    try:
+        clean_folder(original_path, clean_dir_path)
+    except: 
+        flash("Error processing the audio. Please retry.")  
+        abort(400)
     # Format the cleaned data 
     shutil.make_archive(os.path.join(request_path, random_uuid), 'zip', clean_dir_path)
     combined = AudioSegment.empty()
@@ -149,7 +156,7 @@ def save_metadata(clean_path, uuid, n_files, duration):
         json.dump(data, write_file) 
 
 if __name__ == '__main__':
-    app.debug = True   # Change this when in production 
+    app.debug = False   # Change this when in production 
     app.run()
     
     
